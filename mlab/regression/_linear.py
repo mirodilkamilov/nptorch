@@ -1,7 +1,6 @@
 import math
 
 import numpy as np
-from numpy import dtype
 from numpy.typing import NDArray
 
 
@@ -60,13 +59,15 @@ class LinearRegressor:
 
 
 class SGDRegression:
-    def __init__(self, learning_rate=0.01, epochs=1000, batch_size=32):
+    def __init__(self, learning_rate=0.01, epochs=1000, batch_size=32, tolerance=1e-4):
         self.weights_ = None
         self.bias_ = None
 
         self.learning_rate = learning_rate
         self.epochs = epochs
         self.batch_size = batch_size
+        self.tolerance = tolerance
+        self.rng = np.random.default_rng(seed=42)
 
     def fit(self, X: NDArray[np.floating], y: NDArray[np.floating]):
         """
@@ -80,11 +81,10 @@ class SGDRegression:
             self.weights_ = np.zeros((X.shape[1], 1), dtype=X.dtype)
             self.bias_ = np.zeros((1, 1), dtype=X.dtype)
 
-        rng = np.random.default_rng(seed=42)
-
         epoch = 1
+        prev_loss = None
         while self.epochs >= epoch:
-            indices = rng.permutation(X.shape[0])
+            indices = self.rng.permutation(X.shape[0])
             X_shuffled = X[indices]
             y_shuffled = y[indices]
 
@@ -107,6 +107,17 @@ class SGDRegression:
             print(f"Epoch {epoch}/{self.epochs} | Loss: {epoch_loss / num_batches:.4f}")
             epoch += 1
 
+            # Early stopping logic
+            if prev_loss is None:
+                prev_loss = epoch_loss
+                continue
+
+            if abs(prev_loss - epoch_loss) / (prev_loss + 1e-8) < self.tolerance:
+                print(f"Early stopped with default tolerance of {self.tolerance}")
+                break
+
+            prev_loss = epoch_loss
+
         return self
 
     def _predict(self, X: NDArray[np.floating]) -> NDArray[np.floating]:
@@ -123,6 +134,9 @@ class SGDRegression:
         Returns:
             numpy array of shape (n_samples,)
         """
+        if self.weights_ is None or self.bias_ is None:
+            raise ValueError("Model is not fitted yet. Call fit() first.")
+
         return (X @ self.weights_ + self.bias_).flatten()
 
     def _mse(self, y, y_hat):
