@@ -77,6 +77,18 @@ class SGDRegression:
         self.lambda_ = lambda_
         self.rng = np.random.default_rng(seed=42)
 
+    @property
+    def intercept_(self):
+        if self.bias_ is None:
+            raise ValueError("Model is not fitted yet. Call fit() first.")
+        return self.bias_.flatten()[0]
+
+    @property
+    def coef_(self):
+        if self.weights_ is None:
+            raise ValueError("Model is not fitted yet. Call fit() first.")
+        return self.weights_.flatten()
+
     def fit(self, X: NDArray[np.floating], y: NDArray[np.floating]):
         """
         Train the model using stochastic gradient descent.
