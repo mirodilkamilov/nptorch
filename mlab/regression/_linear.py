@@ -59,7 +59,14 @@ class LinearRegressor:
 
 
 class SGDRegression:
-    def __init__(self, learning_rate=0.01, epochs=1000, batch_size=32, tolerance=1e-4):
+    def __init__(
+            self,
+            learning_rate=0.01,
+            epochs=1000,
+            batch_size=32,
+            tolerance=1e-4,
+            lambda_=0.01,
+    ):
         self.weights_ = None
         self.bias_ = None
 
@@ -67,6 +74,7 @@ class SGDRegression:
         self.epochs = epochs
         self.batch_size = batch_size
         self.tolerance = tolerance
+        self.lambda_ = lambda_
         self.rng = np.random.default_rng(seed=42)
 
     def fit(self, X: NDArray[np.floating], y: NDArray[np.floating]):
@@ -101,7 +109,11 @@ class SGDRegression:
                 epoch_loss += self._mse(y_batch, y_hat)
 
                 grad = self._mse_grad(y_batch, y_hat)
-                self.weights_ = self.weights_ - self.learning_rate * (X_batch.T @ grad)
+                # Apply L2 regularization - L = (1/n) * Σ(y_hat - y)² + λ * Σ(w²)
+                # ∂L/∂w = (2/n) * Xᵀ(y_hat - y) + 2λw
+                self.weights_ = self.weights_ - self.learning_rate * (
+                        X_batch.T @ grad + 2 * self.lambda_ * self.weights_
+                )
                 self.bias_ = self.bias_ - self.learning_rate * np.mean(grad)
 
             print(f"Epoch {epoch}/{self.epochs} | Loss: {epoch_loss / num_batches:.4f}")
