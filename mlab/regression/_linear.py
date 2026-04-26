@@ -26,6 +26,8 @@ class LinearRegressor:
             X: numpy array of shape (n_samples, n_features)
             y: numpy array of shape (n_samples,)
         """
+        if X.size == 0 or y.size == 0:
+            raise ValueError("Training data cannot be empty.")
         X_ = self._add_dummy_feature(X)
 
         # Computing matrix inverse is numerically unstable: self.weights_ = np.linalg.inv(X_.T @ X_) @ X_.T @ y
