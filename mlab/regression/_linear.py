@@ -98,7 +98,10 @@ class SGDRegression:
             y: numpy array of shape (n_samples,)
         """
         if self.weights_ is None and self.bias_ is None:
-            self.weights_ = np.zeros((X.shape[1], 1), dtype=X.dtype)
+            # Xavier initialization
+            self.weights_ = self.rng.normal(
+                0, np.sqrt(1.0 / X.shape[1]), (X.shape[1], 1)
+            ).astype(X.dtype)
             self.bias_ = np.zeros((1, 1), dtype=X.dtype)
 
         epoch = 1
