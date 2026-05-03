@@ -30,7 +30,7 @@ class LogisticRegression:
             learning_rate=0.01,
             epochs=1000,
             threshold=None,
-            tolerance=1e-6,
+            tolerance=1e-5,
             lambda_=0.01,
     ):
         self.weights_ = None
@@ -89,7 +89,7 @@ class LogisticRegression:
             if self.tolerance is not None and len(self.loss_history) > 1:
                 prev_loss = self.loss_history[-2]["loss"]
                 curr_loss = self.loss_history[-1]["loss"]
-                if abs(prev_loss - curr_loss) / (prev_loss + 1e-8) < self.tolerance:
+                if abs(prev_loss - curr_loss) < self.tolerance:
                     print(f"Early stopped with tolerance of {self.tolerance}")
                     break
 
@@ -132,7 +132,7 @@ class SGDClassifier:
             epochs=1000,
             batch_size=32,
             threshold=None,
-            tolerance=1e-6,
+            tolerance=1e-5,
             lambda_=0.01,
     ):
         self.weights_ = None
@@ -201,7 +201,7 @@ class SGDClassifier:
                 )
 
                 if self.tolerance is not None and prev_loss is not None:
-                    if abs(prev_loss - curr_loss) / (prev_loss + 1e-8) < self.tolerance:
+                    if abs(prev_loss - curr_loss) < self.tolerance:
                         print(
                             f"Early stopped at epoch {epoch} with tolerance {self.tolerance}"
                         )
