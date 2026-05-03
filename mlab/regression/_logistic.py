@@ -5,17 +5,21 @@ def sigmoid(z):
     return 1 / (1 + np.exp(-np.clip(z, -15, 15)))
 
 
-def cross_entropy_loss(y, y_hat):
+def cross_entropy_loss(y, y_hat, epsilon=1e-15):
+    # Clip predicted y [-epsilon, epsilon] to prevent log(0) errors
+    y_hat = np.clip(y_hat, epsilon, 1 - epsilon)
     return -np.mean(y * np.log(y_hat) + (1 - y) * np.log(1 - y_hat))
 
 
 class LogisticRegression:
-    def __init__(self, learning_rate=0.01, epochs=1000):
+    def __init__(self, learning_rate=0.01, epochs=1000, tolerance=1e-4):
         self.weights_ = None
         self.bias_ = None
         self.learning_rate = learning_rate
         self.epochs = epochs
+        self.tolerance = tolerance
         self.loss_history = []
+        self.rng = np.random.default_rng(seed=42)
 
     def fit(self, X, y):
         """
@@ -27,7 +31,10 @@ class LogisticRegression:
         """
         n_samples, n_features = X.shape
 
-        self.weights_ = np.zeros(n_features, dtype=np.float64)
+        # Xavier initialization
+        self.weights_ = self.rng.normal(
+            0, np.sqrt(2.0 / n_features), n_features
+        ).astype(np.float64)
         self.bias_ = 0.0
 
         for epoch in range(1, self.epochs + 1):
@@ -41,6 +48,13 @@ class LogisticRegression:
 
             self.weights_ -= self.learning_rate * weight_grad
             self.bias_ -= self.learning_rate * bias_grad
+
+            if len(self.loss_history) > 1:
+                prev_loss = self.loss_history[-2]["loss"]
+                curr_loss = self.loss_history[-1]["loss"]
+                if abs(prev_loss - curr_loss) / (prev_loss + 1e-8) < self.tolerance:
+                    print(f"Early stopped with tolerance of {self.tolerance}")
+                    break
 
         return self
 
