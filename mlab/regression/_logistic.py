@@ -163,12 +163,14 @@ class SGDClassifier:
         n_samples, n_features = X.shape
         self.weights_ = np.zeros(n_features, dtype=np.float64)
         self.bias_ = 0.0
+        prev_loss = None
+        log_every = max(
+            1, self.epochs // 100
+        )  # log ~100 points regardless of epoch count
 
         for epoch in range(1, self.epochs + 1):
-            # Shuffle all indices at the start of each epoch
             indices = self.rng.permutation(n_samples)
 
-            # Walk through every sample in mini-batch chunks
             for start in range(0, n_samples, self.batch_size):
                 batch_idx = indices[start: start + self.batch_size]
                 X_batch, y_batch = X[batch_idx], y[batch_idx]
@@ -183,30 +185,30 @@ class SGDClassifier:
                 self.weights_ -= self.learning_rate * weight_grad
                 self.bias_ -= self.learning_rate * bias_grad
 
-            # Log metrics once per epoch on the full dataset
-            y_full = self.predict_proba(X)
-            precision, recall, accuracy, f1 = confusion_matrix(
-                y, (y_full >= self.threshold_).astype(int)
-            )
-            self.loss_history.append(
-                {
-                    "epoch": epoch,
-                    "loss": cross_entropy_loss(y, y_full),
-                    "precision": precision,
-                    "recall": recall,
-                    "accuracy": accuracy,
-                    "f1": f1,
-                }
-            )
+            if epoch % log_every == 0:
+                y_full = self.predict_proba(X)
+                curr_loss = cross_entropy_loss(y, y_full)
+                precision, recall, accuracy, f1 = confusion_matrix(
+                    y, (y_full >= self.threshold_).astype(int)
+                )
+                self.loss_history.append(
+                    {
+                        "epoch": epoch,
+                        "loss": curr_loss,
+                        "precision": precision,
+                        "recall": recall,
+                        "accuracy": accuracy,
+                        "f1": f1,
+                    }
+                )
 
-            if self.tolerance is not None and len(self.loss_history) > 1:
-                prev_loss = self.loss_history[-2]["loss"]
-                curr_loss = self.loss_history[-1]["loss"]
-                if abs(prev_loss - curr_loss) / (prev_loss + 1e-8) < self.tolerance:
-                    print(
-                        f"Early stopped at epoch {epoch} with tolerance {self.tolerance}"
-                    )
-                    break
+                if self.tolerance is not None and prev_loss is not None:
+                    if abs(prev_loss - curr_loss) / (prev_loss + 1e-8) < self.tolerance:
+                        print(
+                            f"Early stopped at epoch {epoch} with tolerance {self.tolerance}"
+                        )
+                        break
+                prev_loss = curr_loss
 
         return self
 
@@ -223,7 +225,7 @@ class SGDClassifier:
         if self.weights_ is None:
             raise ValueError("Model is not fitted yet. Call fit() first.")
 
-        return (sigmoid(X @ self.weights_ + self.bias_) >= self.threshold_).astype(int)
+        return (self.predict_proba(X) >= self.threshold_).astype(int)
 
     def predict_proba(self, X):
         """
