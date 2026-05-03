@@ -12,7 +12,7 @@ def cross_entropy_loss(y, y_hat, epsilon=1e-15):
 
 
 class LogisticRegression:
-    def __init__(self, learning_rate=0.01, epochs=1000, tolerance=1e-4):
+    def __init__(self, learning_rate=0.01, epochs=1000, tolerance=None):
         self.weights_ = None
         self.bias_ = None
         self.learning_rate = learning_rate
@@ -46,7 +46,7 @@ class LogisticRegression:
             self.weights_ -= self.learning_rate * weight_grad
             self.bias_ -= self.learning_rate * bias_grad
 
-            if len(self.loss_history) > 1:
+            if self.tolerance is not None and len(self.loss_history) > 1:
                 prev_loss = self.loss_history[-2]["loss"]
                 curr_loss = self.loss_history[-1]["loss"]
                 if abs(prev_loss - curr_loss) / (prev_loss + 1e-8) < self.tolerance:
