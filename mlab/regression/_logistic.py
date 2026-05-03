@@ -12,12 +12,13 @@ def cross_entropy_loss(y, y_hat, epsilon=1e-15):
 
 
 class LogisticRegression:
-    def __init__(self, learning_rate=0.01, epochs=1000, tolerance=None):
+    def __init__(self, learning_rate=0.01, epochs=1000, tolerance=None, lambda_=0.01):
         self.weights_ = None
         self.bias_ = None
         self.learning_rate = learning_rate
         self.epochs = epochs
         self.tolerance = tolerance
+        self.lambda_ = lambda_
         self.loss_history = []
         self.rng = np.random.default_rng(seed=42)
 
@@ -40,7 +41,9 @@ class LogisticRegression:
                 {"epoch": epoch, "loss": cross_entropy_loss(y, y_pred)}
             )
 
-            weight_grad = (1 / n_samples) * X.T @ (y_pred - y)
+            # Apply L2 regularization once per epoch - L = (1/n) * Σ(y_hat - y)² + λ * Σ(w²)
+            # ∂L/∂w = (2/n) * Xᵀ(y_hat - y) + 2λw
+            weight_grad = (1 / n_samples) * X.T @ (y_pred - y) + (self.lambda_ / n_samples) * self.weights_
             bias_grad = np.mean(y_pred - y)  # (1 / n_samples) * np.sum(y_pred - y)
 
             self.weights_ -= self.learning_rate * weight_grad
