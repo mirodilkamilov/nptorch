@@ -164,9 +164,7 @@ class SGDClassifier:
         self.weights_ = np.zeros(n_features, dtype=np.float64)
         self.bias_ = 0.0
         prev_loss = None
-        log_every = max(
-            1, self.epochs // 100
-        )  # log ~100 points regardless of epoch count
+        log_every = max(1, self.epochs // 100)  # log every 100th
 
         for epoch in range(1, self.epochs + 1):
             indices = self.rng.permutation(n_samples)
