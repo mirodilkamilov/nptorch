@@ -5,10 +5,23 @@ def sigmoid(z):
     return 1 / (1 + np.exp(-np.clip(z, -15, 15)))
 
 
-def cross_entropy_loss(y, y_hat, epsilon=1e-15):
+def cross_entropy_loss(y, y_pred, epsilon=1e-15):
     # Clip predicted y [-epsilon, epsilon] to prevent log(0) errors
-    y_hat = np.clip(y_hat, epsilon, 1 - epsilon)
-    return -np.mean(y * np.log(y_hat) + (1 - y) * np.log(1 - y_hat))
+    y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
+    return -np.mean(y * np.log(y_pred) + (1 - y) * np.log(1 - y_pred))
+
+
+def confusion_matrix(y, y_pred):
+    tp = np.sum((y == 1) & (y_pred == 1))
+    fp = np.sum((y == 0) & (y_pred == 1))
+    fn = np.sum((y == 1) & (y_pred == 0))
+
+    precision = tp / (tp + fp + 1e-8)
+    recall = tp / (tp + fn + 1e-8)
+    accuracy = np.mean(y == y_pred)
+    f1_score = 2 * (precision * recall) / (precision + recall + 1e-8)
+
+    return precision, recall, accuracy, f1_score
 
 
 class LogisticRegression:
@@ -50,12 +63,19 @@ class LogisticRegression:
 
         for epoch in range(1, self.epochs + 1):
             y_pred = self.predict_proba(X)
-            self.loss_history.append(
-                {"epoch": epoch, "loss": cross_entropy_loss(y, y_pred)}
-            )
 
-            # Apply L2 regularization once per epoch - L = (1/n) * Σ(y_hat - y)² + λ * Σ(w²)
-            # ∂L/∂w = (2/n) * Xᵀ(y_hat - y) + 2λw
+            precision, recall, accuracy, f1_score = confusion_matrix(y, y_pred)
+            self.loss_history.append({
+                "epoch": epoch,
+                "loss": cross_entropy_loss(y, y_pred),
+                "precision": precision,
+                "recall": recall,
+                "accuracy": accuracy,
+                "f1": f1_score
+            })
+
+            # Apply L2 regularization once per epoch - L = (1/n) * Σ(y_pred - y)² + λ * Σ(w²)
+            # ∂L/∂w = (2/n) * Xᵀ(y_pred - y) + 2λw
             weight_grad = (1 / n_samples) * X.T @ (y_pred - y) + (
                     self.lambda_ / n_samples
             ) * self.weights_
