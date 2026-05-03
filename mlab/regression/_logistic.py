@@ -16,7 +16,7 @@ class LogisticRegression:
             self,
             learning_rate=0.01,
             epochs=1000,
-            threshold=0.5,
+            threshold=None,
             tolerance=None,
             lambda_=0.01,
     ):
@@ -27,7 +27,9 @@ class LogisticRegression:
         self.threshold = threshold
         self.tolerance = tolerance
         self.lambda_ = lambda_
+
         self.loss_history = []
+        self.threshold_ = self.threshold
         self.rng = np.random.default_rng(seed=42)
 
     def fit(self, X, y):
@@ -66,6 +68,8 @@ class LogisticRegression:
                     print(f"Early stopped with tolerance of {self.tolerance}")
                     break
 
+        self.threshold_ = self.threshold if self.threshold is not None else np.mean(y)
+
         return self
 
     def predict(self, X):
@@ -78,7 +82,7 @@ class LogisticRegression:
         Returns:
             numpy array of shape (n_samples,) with predicted labels (0 or 1)
         """
-        return (self.predict_proba(X) >= self.threshold).astype(int)
+        return (self.predict_proba(X) >= self.threshold_).astype(int)
 
     def predict_proba(self, X):
         """
