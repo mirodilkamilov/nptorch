@@ -40,6 +40,9 @@ class LogisticRegression:
             X: numpy array of shape (n_samples, n_features)
             y: numpy array of shape (n_samples,) with binary labels (0 or 1)
         """
+        if len(np.unique(y)) < 2:
+            raise ValueError("Training data must contain at least two classes.")
+
         n_samples, n_features = X.shape
 
         self.weights_ = np.zeros(n_features, dtype=np.float64)
@@ -94,4 +97,7 @@ class LogisticRegression:
         Returns:
             numpy array of shape (n_samples, 2) with probabilities for each class
         """
+        if self.weights_ is None or self.bias_ is None:
+            raise ValueError("Model is not fitted yet. Call fit() first.")
+
         return sigmoid(X @ self.weights_ + self.bias_)
