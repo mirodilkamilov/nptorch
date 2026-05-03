@@ -31,10 +31,7 @@ class LogisticRegression:
         """
         n_samples, n_features = X.shape
 
-        # Xavier initialization
-        self.weights_ = self.rng.normal(
-            0, np.sqrt(2.0 / n_features), n_features
-        ).astype(np.float64)
+        self.weights_ = np.zeros(n_features, dtype=np.float64)
         self.bias_ = 0.0
 
         for epoch in range(1, self.epochs + 1):
