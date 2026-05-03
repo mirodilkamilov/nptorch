@@ -54,8 +54,9 @@ class LinearRegressor:
         if self.weights_ is None:
             raise ValueError("Model is not fitted yet. Call fit() first.")
 
-        X_ = self._add_dummy_feature(X)
-        return X_ @ self.weights_
+        # X_ = self._add_dummy_feature(X)
+        # return X_ @ self.weights_
+        return X @ self.coef_ + self.intercept_  # no allocation, no concatenate
 
 
 class SGDRegression:
