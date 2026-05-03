@@ -30,7 +30,7 @@ class LogisticRegression:
             learning_rate=0.01,
             epochs=1000,
             threshold=None,
-            tolerance=1e-4,
+            tolerance=1e-6,
             lambda_=0.01,
     ):
         self.weights_ = None
@@ -132,7 +132,7 @@ class SGDClassifier:
             epochs=1000,
             batch_size=32,
             threshold=None,
-            tolerance=1e-4,
+            tolerance=1e-6,
             lambda_=0.01,
     ):
         self.weights_ = None
