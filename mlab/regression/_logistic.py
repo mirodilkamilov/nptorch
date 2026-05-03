@@ -12,11 +12,19 @@ def cross_entropy_loss(y, y_hat, epsilon=1e-15):
 
 
 class LogisticRegression:
-    def __init__(self, learning_rate=0.01, epochs=1000, tolerance=None, lambda_=0.01):
+    def __init__(
+            self,
+            learning_rate=0.01,
+            epochs=1000,
+            threshold=0.5,
+            tolerance=None,
+            lambda_=0.01,
+    ):
         self.weights_ = None
         self.bias_ = None
         self.learning_rate = learning_rate
         self.epochs = epochs
+        self.threshold = threshold
         self.tolerance = tolerance
         self.lambda_ = lambda_
         self.loss_history = []
@@ -43,7 +51,9 @@ class LogisticRegression:
 
             # Apply L2 regularization once per epoch - L = (1/n) * Σ(y_hat - y)² + λ * Σ(w²)
             # ∂L/∂w = (2/n) * Xᵀ(y_hat - y) + 2λw
-            weight_grad = (1 / n_samples) * X.T @ (y_pred - y) + (self.lambda_ / n_samples) * self.weights_
+            weight_grad = (1 / n_samples) * X.T @ (y_pred - y) + (
+                    self.lambda_ / n_samples
+            ) * self.weights_
             bias_grad = np.mean(y_pred - y)  # (1 / n_samples) * np.sum(y_pred - y)
 
             self.weights_ -= self.learning_rate * weight_grad
@@ -68,7 +78,7 @@ class LogisticRegression:
         Returns:
             numpy array of shape (n_samples,) with predicted labels (0 or 1)
         """
-        return (self.predict_proba(X) >= 0.5).astype(int)
+        return (self.predict_proba(X) >= self.threshold).astype(int)
 
     def predict_proba(self, X):
         """
