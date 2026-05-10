@@ -9,7 +9,7 @@ class KMeans:
             n_clusters=3,
             max_iter=300,
             tol=1e-4,
-            random_state: int | RandomState | None = None,
+            random_state: int | RandomState | None = 42,
     ):
         self.n_clusters = n_clusters
         self.max_iter = max_iter
@@ -85,19 +85,19 @@ class KMeans:
 
         self._initialize_centroids(X)
         labels = None
+        prev_labels = None
+
         for epoch in range(1, self.max_iter + 1):
             # Assign point to a cluster
             labels = self._assign_labels(X)
-            prev_centers = self.cluster_centers_.copy()
+
+            # Early stopping
+            if prev_labels is not None and np.array_equal(labels, prev_labels):
+                break  # labels stable → fully converged
+            prev_labels = labels
 
             # Update centroids
             self._update_centroids(X, labels)
-
-            if (
-                    np.max(np.linalg.norm(self.cluster_centers_ - prev_centers, axis=1))
-                    < self.tol
-            ):
-                break
 
         self.labels_ = labels
         self.inertia_ = self._compute_inertia(X, self.labels_)
