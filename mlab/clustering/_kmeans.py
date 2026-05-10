@@ -84,7 +84,7 @@ class KMeans:
             )
 
         self._initialize_centroids(X)
-
+        labels = None
         for epoch in range(1, self.max_iter + 1):
             # Assign point to a cluster
             labels = self._assign_labels(X)
@@ -93,10 +93,13 @@ class KMeans:
             # Update centroids
             self._update_centroids(X, labels)
 
-            if np.linalg.norm(self.cluster_centers_ - prev_centers) < self.tol:
+            if (
+                    np.max(np.linalg.norm(self.cluster_centers_ - prev_centers, axis=1))
+                    < self.tol
+            ):
                 break
 
-        self.labels_ = self._assign_labels(X)
+        self.labels_ = labels
         self.inertia_ = self._compute_inertia(X, self.labels_)
         return self
 
