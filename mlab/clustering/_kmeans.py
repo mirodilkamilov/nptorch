@@ -23,8 +23,34 @@ class KMeans:
         self.labels_ = None
         self.inertia_ = None
 
+    def _init_centroids_plusplus(self, X: NDArray[np.floating]):
+        n_samples = X.shape[0]
+
+        # Pick first centroid uniformly at random
+        first_idx = self.random_state.randint(0, n_samples)
+        self.cluster_centers_ = X[first_idx][np.newaxis, :]  # (1, n_features)
+
+        # Pick remaining centroids
+        for _ in range(1, self.n_clusters):
+            # Distance from each point to its nearest already-chosen centroid
+            diff = X[:, np.newaxis, :] - self.cluster_centers_[np.newaxis, :, :]
+            sq_distances = (diff ** 2).sum(axis=2)  # (n_samples, k)
+            min_sq_distances = sq_distances.min(axis=1)  # (n_samples,)
+
+            # Convert to probabilities — farther points are more likely to be picked
+            probabilities = min_sq_distances / min_sq_distances.sum()
+
+            # Weighted random selection
+            next_idx = self.random_state.choice(n_samples, p=probabilities)
+            next_centroid = X[next_idx][np.newaxis, :]  # (1, n_features)
+            self.cluster_centers_ = np.vstack(
+                [self.cluster_centers_, next_centroid]
+            )  # (k+1, n_features)
+
+        return self
+
     def _initialize_centroids(self, X):
-        self._random_centroid_initialization(X)
+        self._init_centroids_plusplus(X)
 
     def _random_centroid_initialization(self, X: NDArray[np.floating]):
         n_samples = X.shape[0]
