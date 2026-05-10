@@ -48,9 +48,29 @@ class KMeans:
         distances = np.sqrt((diff ** 2).sum(axis=2))  # (n_samples, n_clusters)
         return np.argmin(distances, axis=1)
 
-    def _update_centroids(self, X: NDArray[np.floating], labels: NDArray[np.floating]):
+    def _update_centroids(self, X: NDArray[np.floating], labels: NDArray):
         for label in range(self.n_clusters):
-            self.cluster_centers_[label] = X[labels == label].mean(axis=0)
+            mask = labels == label
+            if mask.sum() == 0:
+                # Reinitialize to a random point
+                self.cluster_centers_[label] = X[self.random_state.randint(0, len(X))]
+            else:
+                self.cluster_centers_[label] = X[mask].mean(axis=0)
+
+    def _compute_inertia(self, X: NDArray[np.floating], labels: NDArray) -> float:
+        """
+        Compute inertia (sum of squared distances from each point to its assigned centroid).
+
+        Args:
+            X: numpy array of shape (n_samples, n_features)
+            labels: numpy array of shape (n_samples,) with cluster assignments
+
+        Returns:
+            inertia: float
+        """
+        centroids = self.cluster_centers_[labels]  # (n_samples, n_features)
+        diff = X - centroids  # (n_samples, n_features)
+        return float((diff ** 2).sum())
 
     def fit(self, X):
         """
@@ -78,7 +98,8 @@ class KMeans:
             if np.linalg.norm(self.cluster_centers_ - prev_centers) < self.tol:
                 break
 
-        self.labels_ = labels
+        self.labels_ = self._assign_labels(X)
+        self.inertia_ = self._compute_inertia(X, self.labels_)
         return self
 
     def predict(self, X):
