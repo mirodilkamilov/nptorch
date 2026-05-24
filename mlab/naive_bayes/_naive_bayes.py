@@ -2,11 +2,12 @@ import numpy as np
 
 
 class GaussianNaiveBayes:
-    def __init__(self):
+    def __init__(self, var_smoothing=1e-9):
+        self.var_smoothing = var_smoothing
         self.classes_ = None  # unique class labels, shape (n_classes,)
-        self.priors_ = None  # log prior per class,  shape (n_classes,)
+        self.priors_ = None  # prior probability per class, shape (n_classes,)
         self.mean_ = None  # mean per class/feature, shape (n_classes, n_features)
-        self.variance_ = None  # variance per class/feature, shape (n_classes, n_features)
+        self.variance_ = None  # smoothed variance per class/feature, shape (n_classes, n_features)
 
     def fit(self, X, y):
         """
@@ -32,6 +33,12 @@ class GaussianNaiveBayes:
             self.priors_[i] = X_c.shape[0] / X.shape[0]
             self.mean_[i] = X_c.mean(axis=0)
             self.variance_[i] = X_c.var(axis=0)
+
+        # Add smoothing: a fraction of the largest per-feature variance seen in the
+        # full dataset. Keeps epsilon data-scale-relative so the default 1e-9 is
+        # meaningful whether features are in [0,1] or [0,1000].
+        epsilon = self.var_smoothing * X.var(axis=0).max()
+        self.variance_ += epsilon
 
         return self
 
