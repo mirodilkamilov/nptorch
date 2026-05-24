@@ -4,9 +4,9 @@ import numpy as np
 class GaussianNaiveBayes:
     def __init__(self):
         self.classes_ = None  # unique class labels, shape (n_classes,)
-        self.priors_ = None   # log prior per class,  shape (n_classes,)
-        self.mean_ = None     # mean per class/feature, shape (n_classes, n_features)
-        self.variance_ = None # variance per class/feature, shape (n_classes, n_features)
+        self.priors_ = None  # log prior per class,  shape (n_classes,)
+        self.mean_ = None  # mean per class/feature, shape (n_classes, n_features)
+        self.variance_ = None  # variance per class/feature, shape (n_classes, n_features)
 
     def fit(self, X, y):
         """
@@ -16,6 +16,9 @@ class GaussianNaiveBayes:
             X: numpy array of shape (n_samples, n_features) - continuous features.
             y: numpy array of shape (n_samples,) - class labels
         """
+        if X.size == 0 or y.size == 0:
+            raise ValueError("Training data cannot be empty.")
+
         self.classes_ = np.unique(y)
         n_classes = len(self.classes_)
         n_features = X.shape[1]
@@ -47,8 +50,8 @@ class GaussianNaiveBayes:
         log_likelihoods = np.zeros((X.shape[0], len(self.classes_)))
 
         for i in range(len(self.classes_)):
-            mu = self.mean_[i]           # (n_features,)
-            var = self.variance_[i]      # (n_features,)
+            mu = self.mean_[i]  # (n_features,)
+            var = self.variance_[i]  # (n_features,)
 
             # log N(x; μ, σ²) = -0.5 * [log(2πσ²) + (x-μ)²/σ²]
             log_norm = -0.5 * np.log(2 * np.pi * var)
@@ -76,6 +79,9 @@ class GaussianNaiveBayes:
         Returns:
             numpy array of shape (n_samples,) with predicted class labels
         """
+        if self.priors_ is None or self.mean_ is None or self.variance_ is None:
+            raise ValueError("Model is not fitted yet. Call fit() first.")
+
         return self.classes_[np.argmax(self._log_posterior(X), axis=1)]
 
     def predict_proba(self, X):
