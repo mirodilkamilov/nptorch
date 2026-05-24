@@ -107,3 +107,87 @@ class GaussianNaiveBayes:
         log_post -= log_post.max(axis=1, keepdims=True)
         proba = np.exp(log_post)
         return proba / proba.sum(axis=1, keepdims=True)
+
+
+class MultinomialNaiveBayes:
+    def __init__(self, alpha=1.0):
+        self.alpha = alpha  # Laplace smoothing parameter
+        self.classes_ = None
+        self.class_log_prior_ = None
+        self.feature_log_prob_ = None
+
+    def fit(self, X, y):
+        """
+        Train the model by computing class priors and feature likelihoods.
+
+        Args:
+            X: numpy array of shape (n_samples, n_features) - non-negative count features
+            y: numpy array of shape (n_samples,) - class labels
+        """
+        if X.size == 0 or y.size == 0:
+            raise ValueError("Training data cannot be empty.")
+
+        self.classes_ = np.unique(y)
+        n_samples = X.shape[0]
+
+        # One-hot encode y: Y[i, k] = 1 if sample i belongs to class k
+        # Shape: (n_samples, n_classes)
+        Y = (y[:, np.newaxis] == self.classes_[np.newaxis, :]).astype(X.dtype)
+
+        # log P(C_k) = log(count(C_k) / n_samples)
+        class_counts = Y.sum(axis=0)                               # (n_classes,)
+        self.class_log_prior_ = np.log(class_counts / n_samples)  # (n_classes,)
+
+        # Feature counts per class via matrix multiply — no per-class loop:
+        #   feature_counts[k, i] = Σ_{samples in class k} X[:, i]
+        # Shape: (n_classes, n_features)
+        # Laplace smoothing: p_ki = (count_ki + α) / (Σ_i count_ki + α * n_features)
+        feature_counts = Y.T @ X                                                    # (n_classes, n_features)
+        smoothed_counts = feature_counts + self.alpha
+        smoothed_totals = smoothed_counts.sum(axis=1, keepdims=True)               # (n_classes, 1)
+        self.feature_log_prob_ = np.log(smoothed_counts / smoothed_totals)         # (n_classes, n_features)
+
+        return self
+
+    def _log_posterior(self, X):
+        """
+        Compute unnormalised log posterior: log P(C_k) + Σ x_i * log P(feat_i | C_k).
+
+        The Σ x_i * log p_ki term is a dot product: X @ feature_log_prob_.T
+
+        Returns:
+            numpy array of shape (n_samples, n_classes)
+        """
+        if self.class_log_prior_ is None or self.feature_log_prob_ is None:
+            raise ValueError("Model is not fitted yet. Call fit() first.")
+
+        return self.class_log_prior_ + X @ self.feature_log_prob_.T
+
+    def predict(self, X):
+        """
+        Predict class labels for the given input.
+
+        Args:
+            X: numpy array of shape (n_samples, n_features)
+
+        Returns:
+            numpy array of shape (n_samples,) with predicted class labels
+        """
+        return self.classes_[np.argmax(self._log_posterior(X), axis=1)]
+
+    def predict_proba(self, X):
+        """
+        Predict class probabilities.
+
+        Args:
+            X: numpy array of shape (n_samples, n_features)
+
+        Returns:
+            numpy array of shape (n_samples, n_classes)
+        """
+        log_post = self._log_posterior(X)
+
+        # Log-sum-exp trick for numerical stability
+        log_post -= log_post.max(axis=1, keepdims=True)
+        proba = np.exp(log_post)
+        return proba / proba.sum(axis=1, keepdims=True)
