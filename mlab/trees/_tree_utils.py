@@ -57,6 +57,9 @@ def entropy(target_column_arr):
 
 
 def information_gain(data, target_column_arr, split_feature_name_or_index):
+    if len(data) == 0:
+        return 0.0
+
     # Calculate total entropy of the current dataset
     total_entropy = entropy(target_column_arr)
 
@@ -106,7 +109,16 @@ def traverse(x, node):
     return traverse(x, node.children_[feature_value])
 
 
-def build_tree(X, y, max_depth=None, min_samples_split=2):
+def build_tree(X, y, max_depth=None, min_samples_split=2, min_impurity_decrease=0.0):
+    if len(X) == 0 or len(y) == 0:
+        raise ValueError("Training data cannot be empty.")
+    if len(X) != len(y):
+        raise ValueError(
+            f"X and y must have the same number of samples, got {len(X)} and {len(y)}."
+        )
+    if X.ndim != 2:
+        raise ValueError(f"X must be a 2-D array, got shape {X.shape}.")
+
     n_features = X.shape[1]
     features = set(range(n_features))
     importances = {i: 0.0 for i in range(n_features)}
@@ -118,7 +130,8 @@ def build_tree(X, y, max_depth=None, min_samples_split=2):
         depth=0,
         max_depth=max_depth,
         min_samples_split=min_samples_split,
-        n_total_samples=len(X),
+        min_impurity_decrease=min_impurity_decrease,
+        n_total_samples=max(len(X), 1),
         importances=importances,
     )
     return root, importances
@@ -131,6 +144,7 @@ def _build_tree(
     depth,
     max_depth,
     min_samples_split,
+    min_impurity_decrease,
     n_total_samples,
     importances,
 ):
@@ -158,6 +172,9 @@ def _build_tree(
             highest_ig = current_ig
             highest_ig_feature_index = feature_index
 
+    if highest_ig < min_impurity_decrease:
+        return LeafNode(majority_label)
+
     importances[highest_ig_feature_index] += (
         len(X_subset) / n_total_samples
     ) * highest_ig
@@ -175,6 +192,7 @@ def _build_tree(
             depth=depth + 1,
             max_depth=max_depth,
             min_samples_split=min_samples_split,
+            min_impurity_decrease=min_impurity_decrease,
             n_total_samples=n_total_samples,
             importances=importances,
         )
