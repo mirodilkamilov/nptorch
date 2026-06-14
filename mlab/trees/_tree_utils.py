@@ -145,7 +145,7 @@ def traverse(x, node):
     return traverse(x, node.children_[feature_value])
 
 
-def build_tree(X, y, max_depth=None, min_samples_split=2, min_impurity_decrease=0.0):
+def build_tree(X, y, max_depth=None, min_samples_split=5, min_impurity_decrease=0.0):
     if len(X) == 0 or len(y) == 0:
         raise ValueError("Training data cannot be empty.")
     if len(X) != len(y):

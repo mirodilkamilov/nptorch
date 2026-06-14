@@ -4,7 +4,7 @@ from mlab.trees._tree_utils import build_tree, traverse
 
 
 class DecisionTree:
-    def __init__(self, max_depth=None, min_samples_split=2, min_impurity_decrease=0.0):
+    def __init__(self, max_depth=None, min_samples_split=5, min_impurity_decrease=0.0):
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
         self.min_impurity_decrease = min_impurity_decrease
