@@ -76,7 +76,17 @@ def information_gain(data, target_column_arr, split_feature_name_or_index):
 
 
 def _best_threshold_split(feature_col, y):
-    """Scan all midpoint thresholds for a continuous feature; return (best_ig, best_threshold)."""
+    """Scan all midpoint thresholds for a continuous feature; return (best_ig, best_threshold).
+
+    NaN values are excluded from the IG computation.
+    """
+    valid = ~np.isnan(feature_col)
+    feature_col = feature_col[valid]
+    y = y[valid]
+
+    if len(feature_col) < 2:
+        return -1.0, 0.0
+
     total_entropy = entropy(y)
     n = len(y)
     sorted_unique = np.sort(np.unique(feature_col))
@@ -120,7 +130,10 @@ def traverse(x, node):
         return node.label_
 
     if node.threshold_ is not None:
-        key = bool(x[node.feature_] <= node.threshold_)
+        val = x[node.feature_]
+        if val != val:  # NaN: val != val is True only for NaN
+            return _most_common_leaf_label(node)
+        key = bool(val <= node.threshold_)
         return traverse(x, node.children_[key])
 
     feature_value = x[node.feature_]
@@ -206,9 +219,18 @@ def _build_tree(
 
     if best_threshold is not None:
         # Continuous: binary split; keep feature available in subtrees (CART style)
-        left_mask = X_subset[:, best_feature] <= best_threshold
+        feature_col = X_subset[:, best_feature]
+        nan_mask = np.isnan(feature_col)
+        left_mask = (feature_col <= best_threshold) & ~nan_mask
+        right_mask = (feature_col > best_threshold) & ~nan_mask
+        # Route NaN training samples to whichever side has more samples
+        if nan_mask.any():
+            if left_mask.sum() >= right_mask.sum():
+                left_mask = left_mask | nan_mask
+            else:
+                right_mask = right_mask | nan_mask
         root_node = InternalNode(best_feature, {}, threshold=best_threshold)
-        for key, mask in [(True, left_mask), (False, ~left_mask)]:
+        for key, mask in [(True, left_mask), (False, right_mask)]:
             root_node.children_[key] = _build_tree(
                 X_subset[mask],
                 y_subset[mask],
