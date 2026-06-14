@@ -51,18 +51,27 @@ def information_gain(data, target_column_arr, split_feature_name_or_index):
     if len(data) == 0:
         return 0.0
 
+    # Calculate total entropy of the current dataset
     total_entropy = entropy(target_column_arr)
 
-    feature_col = data[:, split_feature_name_or_index]
-    feature_values, value_counts = np.unique(feature_col, return_counts=True)
-    proportions = value_counts / len(data)
+    # Calculate weighted entropy after splitting on the feature
+    feature_values, value_counts = np.unique(
+        data[:, split_feature_name_or_index], return_counts=True
+    )
+    weighted_entropy = 0
+    total_items = len(data)
 
-    weighted_entropy = np.sum([
-        p * entropy(target_column_arr[feature_col == v])
-        for v, p in zip(feature_values, proportions)
-    ])
+    for i in range(len(feature_values)):
+        value = feature_values[i]
+        subset_mask = data[:, split_feature_name_or_index] == value
 
-    return total_entropy - weighted_entropy
+        subset_entropy = entropy(target_column_arr[subset_mask])
+        proportion = value_counts[i] / total_items
+        weighted_entropy += proportion * subset_entropy
+
+    # Information Gain is the difference
+    information_gain_ = total_entropy - weighted_entropy
+    return information_gain_
 
 
 def _most_common_leaf_label(node):
