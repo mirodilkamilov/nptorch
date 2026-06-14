@@ -15,20 +15,21 @@ class InternalNode(Node):
     def __init__(
         self,
         feature: int,
-        children: dict[
-            float | int, Node
-        ],  # key represents edge - feature value, value represent the actual child node
+        children: dict[float | int | bool, Node],
+        threshold=None,  # None → categorical multi-way split; float → binary threshold split
     ):
         self.feature_ = feature
         self.children_ = children
+        self.threshold_ = threshold
 
     def _to_dict(self):
-        return {
-            "feature": int(self.feature_),
-            "children": {
-                str(value): child._to_dict() for value, child in self.children_.items()
-            },
+        base: dict = {"feature": int(self.feature_)}
+        if self.threshold_ is not None:
+            base["threshold"] = float(self.threshold_)
+        base["children"] = {
+            str(k): child._to_dict() for k, child in self.children_.items()
         }
+        return base
 
 
 class LeafNode(Node):
@@ -74,6 +75,32 @@ def information_gain(data, target_column_arr, split_feature_name_or_index):
     return information_gain_
 
 
+def _best_threshold_split(feature_col, y):
+    """Scan all midpoint thresholds for a continuous feature; return (best_ig, best_threshold)."""
+    total_entropy = entropy(y)
+    n = len(y)
+    sorted_unique = np.sort(np.unique(feature_col))
+
+    best_ig = -1.0
+    best_threshold = sorted_unique[0]
+
+    for i in range(len(sorted_unique) - 1):
+        threshold = (sorted_unique[i] + sorted_unique[i + 1]) / 2
+        left_mask = feature_col <= threshold
+        n_left = left_mask.sum()
+        n_right = n - n_left
+        weighted_entropy = (
+            (n_left / n) * entropy(y[left_mask]) +
+            (n_right / n) * entropy(y[~left_mask])
+        )
+        ig = total_entropy - weighted_entropy
+        if ig > best_ig:
+            best_ig = ig
+            best_threshold = threshold
+
+    return best_ig, best_threshold
+
+
 def _most_common_leaf_label(node):
     """Collect all leaf labels reachable from node and return the majority."""
     labels = []
@@ -92,11 +119,13 @@ def traverse(x, node):
     if isinstance(node, LeafNode):
         return node.label_
 
-    feature_value = x[node.feature_]
+    if node.threshold_ is not None:
+        key = bool(x[node.feature_] <= node.threshold_)
+        return traverse(x, node.children_[key])
 
+    feature_value = x[node.feature_]
     if feature_value not in node.children_:
         return _most_common_leaf_label(node)
-
     return traverse(x, node.children_[feature_value])
 
 
@@ -154,39 +183,59 @@ def _build_tree(
     if len(X_subset) < min_samples_split:
         return LeafNode(majority_label)
 
-    highest_ig = -1.0
-    highest_ig_feature_index = next(iter(features))
+    best_ig = -1.0
+    best_feature = next(iter(features))
+    best_threshold = None
 
     for feature_index in features:
-        current_ig = information_gain(X_subset, y_subset, feature_index)
-        if current_ig > highest_ig:
-            highest_ig = current_ig
-            highest_ig_feature_index = feature_index
+        feature_col = X_subset[:, feature_index]
+        if np.issubdtype(feature_col.dtype, np.floating):
+            ig, threshold = _best_threshold_split(feature_col, y_subset)
+        else:
+            ig = information_gain(X_subset, y_subset, feature_index)
+            threshold = None
+        if ig > best_ig:
+            best_ig = ig
+            best_feature = feature_index
+            best_threshold = threshold
 
-    if highest_ig < min_impurity_decrease:
+    if best_ig < min_impurity_decrease:
         return LeafNode(majority_label)
 
-    importances[highest_ig_feature_index] += (
-        len(X_subset) / n_total_samples
-    ) * highest_ig
+    importances[best_feature] += (len(X_subset) / n_total_samples) * best_ig
 
-    root_node = InternalNode(highest_ig_feature_index, children={})
-    feature_column_arr = X_subset[:, highest_ig_feature_index]
-    feature_values = np.unique(feature_column_arr)
-
-    for feature_value in feature_values:
-        mask = feature_column_arr == feature_value
-        child_node = _build_tree(
-            X_subset[mask],
-            y_subset[mask],
-            features=features - {highest_ig_feature_index},
-            depth=depth + 1,
-            max_depth=max_depth,
-            min_samples_split=min_samples_split,
-            min_impurity_decrease=min_impurity_decrease,
-            n_total_samples=n_total_samples,
-            importances=importances,
-        )
-        root_node.children_[feature_value] = child_node
+    if best_threshold is not None:
+        # Continuous: binary split; keep feature available in subtrees (CART style)
+        left_mask = X_subset[:, best_feature] <= best_threshold
+        root_node = InternalNode(best_feature, {}, threshold=best_threshold)
+        for key, mask in [(True, left_mask), (False, ~left_mask)]:
+            root_node.children_[key] = _build_tree(
+                X_subset[mask],
+                y_subset[mask],
+                features=features,
+                depth=depth + 1,
+                max_depth=max_depth,
+                min_samples_split=min_samples_split,
+                min_impurity_decrease=min_impurity_decrease,
+                n_total_samples=n_total_samples,
+                importances=importances,
+            )
+    else:
+        # Categorical: multi-way split; remove feature so subtrees don't reuse it
+        feature_col = X_subset[:, best_feature]
+        root_node = InternalNode(best_feature, {})
+        for value in np.unique(feature_col):
+            mask = feature_col == value
+            root_node.children_[value] = _build_tree(
+                X_subset[mask],
+                y_subset[mask],
+                features=features - {best_feature},
+                depth=depth + 1,
+                max_depth=max_depth,
+                min_samples_split=min_samples_split,
+                min_impurity_decrease=min_impurity_decrease,
+                n_total_samples=n_total_samples,
+                importances=importances,
+            )
 
     return root_node
