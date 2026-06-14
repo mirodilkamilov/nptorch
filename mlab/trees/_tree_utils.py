@@ -16,11 +16,13 @@ class InternalNode(Node):
         self,
         feature: int,
         children: dict[float | int | bool, Node],
-        threshold=None,  # None → categorical multi-way split; float → binary threshold split
+        threshold=None,     # None → categorical multi-way split; float → binary threshold split
+        nan_goes_left=None, # for threshold nodes: True = NaN routes to True child, False = False child
     ):
         self.feature_ = feature
         self.children_ = children
         self.threshold_ = threshold
+        self.nan_goes_left_ = nan_goes_left
 
     def _to_dict(self):
         base: dict = {"feature": int(self.feature_)}
@@ -132,8 +134,9 @@ def traverse(x, node):
     if node.threshold_ is not None:
         val = x[node.feature_]
         if val != val:  # NaN: val != val is True only for NaN
-            return _most_common_leaf_label(node)
-        key = bool(val <= node.threshold_)
+            key = node.nan_goes_left_  # follow the same side NaN was routed to at training
+        else:
+            key = bool(val <= node.threshold_)
         return traverse(x, node.children_[key])
 
     feature_value = x[node.feature_]
@@ -223,13 +226,15 @@ def _build_tree(
         nan_mask = np.isnan(feature_col)
         left_mask = (feature_col <= best_threshold) & ~nan_mask
         right_mask = (feature_col > best_threshold) & ~nan_mask
-        # Route NaN training samples to whichever side has more samples
+        # Route NaN training samples to whichever side has more samples;
+        # record the direction so traverse can follow the same path at prediction time.
+        nan_goes_left = bool(left_mask.sum() >= right_mask.sum())
         if nan_mask.any():
-            if left_mask.sum() >= right_mask.sum():
+            if nan_goes_left:
                 left_mask = left_mask | nan_mask
             else:
                 right_mask = right_mask | nan_mask
-        root_node = InternalNode(best_feature, {}, threshold=best_threshold)
+        root_node = InternalNode(best_feature, {}, threshold=best_threshold, nan_goes_left=nan_goes_left)
         for key, mask in [(True, left_mask), (False, right_mask)]:
             root_node.children_[key] = _build_tree(
                 X_subset[mask],
