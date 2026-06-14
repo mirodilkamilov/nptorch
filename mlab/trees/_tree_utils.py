@@ -12,12 +12,13 @@ class Node:
 
 
 class InternalNode(Node):
+
     def __init__(
         self,
         feature: int,
         children: dict[float | int | bool, Node],
-        threshold=None,     # None → categorical multi-way split; float → binary threshold split
-        nan_goes_left=None, # for threshold nodes: True = NaN routes to True child, False = False child
+        threshold=None,  # None → categorical multi-way split; float → binary threshold split
+        nan_goes_left=None,  # for threshold nodes: True = NaN routes to True child, False = False child
     ):
         self.feature_ = feature
         self.children_ = children
@@ -101,10 +102,9 @@ def _best_threshold_split(feature_col, y):
         left_mask = feature_col <= threshold
         n_left = left_mask.sum()
         n_right = n - n_left
-        weighted_entropy = (
-            (n_left / n) * entropy(y[left_mask]) +
-            (n_right / n) * entropy(y[~left_mask])
-        )
+        weighted_entropy = (n_left / n) * entropy(y[left_mask]) + (
+            n_right / n
+        ) * entropy(y[~left_mask])
         ig = total_entropy - weighted_entropy
         if ig > best_ig:
             best_ig = ig
@@ -128,21 +128,16 @@ def _most_common_leaf_label(node):
 
 
 def traverse(x, node):
-    if isinstance(node, LeafNode):
-        return node.label_
-
-    if node.threshold_ is not None:
-        val = x[node.feature_]
-        if val != val:  # NaN: val != val is True only for NaN
-            key = node.nan_goes_left_  # follow the same side NaN was routed to at training
+    while not isinstance(node, LeafNode):
+        if node.threshold_ is not None:
+            val = x[node.feature_]
+            key = node.nan_goes_left_ if val != val else bool(val <= node.threshold_)
         else:
-            key = bool(val <= node.threshold_)
-        return traverse(x, node.children_[key])
-
-    feature_value = x[node.feature_]
-    if feature_value not in node.children_:
-        return _most_common_leaf_label(node)
-    return traverse(x, node.children_[feature_value])
+            key = x[node.feature_]
+            if key not in node.children_:
+                return _most_common_leaf_label(node)
+        node = node.children_[key]
+    return node.label_
 
 
 def build_tree(X, y, max_depth=None, min_samples_split=2, min_impurity_decrease=0.0):
@@ -234,7 +229,9 @@ def _build_tree(
                 left_mask = left_mask | nan_mask
             else:
                 right_mask = right_mask | nan_mask
-        root_node = InternalNode(best_feature, {}, threshold=best_threshold, nan_goes_left=nan_goes_left)
+        root_node = InternalNode(
+            best_feature, {}, threshold=best_threshold, nan_goes_left=nan_goes_left
+        )
         for key, mask in [(True, left_mask), (False, right_mask)]:
             root_node.children_[key] = _build_tree(
                 X_subset[mask],
