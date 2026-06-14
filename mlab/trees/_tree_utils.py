@@ -1,7 +1,6 @@
 import json
 
 import numpy as np
-import math
 
 
 class Node:
@@ -41,46 +40,29 @@ class LeafNode(Node):
 
 
 def entropy(target_column_arr):
-    values, counts = np.unique(target_column_arr, return_counts=True)
-    entropy_ = 0
-    total_items = len(target_column_arr)
-
-    if total_items == 0:
-        return 0  # Entropy of an empty set is 0
-
-    for i in range(len(values)):
-        proportion = counts[i] / total_items
-        if proportion > 0:  # Avoid log2(0)
-            entropy_ -= proportion * math.log2(proportion)
-
-    return entropy_
+    if len(target_column_arr) == 0:
+        return 0.0
+    _, counts = np.unique(target_column_arr, return_counts=True)
+    proportions = counts / len(target_column_arr)
+    return -np.sum(proportions * np.log2(proportions))
 
 
 def information_gain(data, target_column_arr, split_feature_name_or_index):
     if len(data) == 0:
         return 0.0
 
-    # Calculate total entropy of the current dataset
     total_entropy = entropy(target_column_arr)
 
-    # Calculate weighted entropy after splitting on the feature
-    feature_values, value_counts = np.unique(
-        data[:, split_feature_name_or_index], return_counts=True
-    )
-    weighted_entropy = 0
-    total_items = len(data)
+    feature_col = data[:, split_feature_name_or_index]
+    feature_values, value_counts = np.unique(feature_col, return_counts=True)
+    proportions = value_counts / len(data)
 
-    for i in range(len(feature_values)):
-        value = feature_values[i]
-        subset_mask = data[:, split_feature_name_or_index] == value
+    weighted_entropy = np.sum([
+        p * entropy(target_column_arr[feature_col == v])
+        for v, p in zip(feature_values, proportions)
+    ])
 
-        subset_entropy = entropy(target_column_arr[subset_mask])
-        proportion = value_counts[i] / total_items
-        weighted_entropy += proportion * subset_entropy
-
-    # Information Gain is the difference
-    information_gain_ = total_entropy - weighted_entropy
-    return information_gain_
+    return total_entropy - weighted_entropy
 
 
 def _most_common_leaf_label(node):
