@@ -140,7 +140,8 @@ def traverse(x, node):
     return node.label_
 
 
-def build_tree(X, y, max_depth=None, min_samples_split=2, min_impurity_decrease=0.0):
+def build_tree(X, y, max_depth=None, min_samples_split=2, min_impurity_decrease=0.0,
+               max_features=None, rng=None):
     if len(X) == 0 or len(y) == 0:
         raise ValueError("Training data cannot be empty.")
     if len(X) != len(y):
@@ -164,6 +165,8 @@ def build_tree(X, y, max_depth=None, min_samples_split=2, min_impurity_decrease=
         min_impurity_decrease=min_impurity_decrease,
         n_total_samples=max(len(X), 1),
         importances=importances,
+        max_features=max_features,
+        rng=rng,
     )
     return root, importances
 
@@ -178,6 +181,8 @@ def _build_tree(
     min_impurity_decrease,
     n_total_samples,
     importances,
+    max_features=None,
+    rng=None,
 ):
     target_values, target_val_counts = np.unique(y_subset, return_counts=True)
     majority_label = target_values[np.argmax(target_val_counts)]
@@ -198,7 +203,13 @@ def _build_tree(
     best_feature = next(iter(features))
     best_threshold = None
 
-    for feature_index in features:
+    # Random Forest: subsample features at each split node
+    candidate_features = features
+    if max_features is not None and rng is not None and len(features) > max_features:
+        sampled = rng.choice(np.array(list(features)), size=max_features, replace=False)
+        candidate_features = set(sampled.tolist())
+
+    for feature_index in candidate_features:
         feature_col = X_subset[:, feature_index]
         if np.issubdtype(feature_col.dtype, np.floating):
             ig, threshold = _best_threshold_split(feature_col, y_subset)
@@ -243,6 +254,8 @@ def _build_tree(
                 min_impurity_decrease=min_impurity_decrease,
                 n_total_samples=n_total_samples,
                 importances=importances,
+                max_features=max_features,
+                rng=rng,
             )
     else:
         # Categorical: multi-way split; remove feature so subtrees don't reuse it
@@ -260,6 +273,8 @@ def _build_tree(
                 min_impurity_decrease=min_impurity_decrease,
                 n_total_samples=n_total_samples,
                 importances=importances,
+                max_features=max_features,
+                rng=rng,
             )
 
     return root_node

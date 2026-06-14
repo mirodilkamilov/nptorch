@@ -4,10 +4,13 @@ from mlab.trees._tree_utils import build_tree, LeafNode, _most_common_leaf_label
 
 
 class DecisionTree:
-    def __init__(self, max_depth=None, min_samples_split=2, min_impurity_decrease=0.0):
+    def __init__(self, max_depth=None, min_samples_split=2, min_impurity_decrease=0.0,
+                 max_features=None, random_state=None):
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
         self.min_impurity_decrease = min_impurity_decrease
+        self.max_features = max_features
+        self.random_state = random_state
         self.root_ = None
         self.feature_importances_ = None
         self._label_dtype = None
@@ -20,12 +23,15 @@ class DecisionTree:
             X: numpy array of shape (n_samples, n_features)
             y: numpy array of shape (n_samples,) with class labels
         """
+        rng = np.random.default_rng(self.random_state)
         root, importances = build_tree(
             X,
             y,
             max_depth=self.max_depth,
             min_samples_split=self.min_samples_split,
             min_impurity_decrease=self.min_impurity_decrease,
+            max_features=self.max_features,
+            rng=rng,
         )
         self.root_ = root
         self._label_dtype = y.dtype
