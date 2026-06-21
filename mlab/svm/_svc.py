@@ -17,9 +17,27 @@ class SVC(SVM):
             X: numpy array of shape (n_samples, n_features)
             y: numpy array of shape (n_samples,) with class labels
         """
-        n = X.shape[0]
+        X = np.asarray(X, dtype=np.float64)
+        y = np.asarray(y)
+
+        if X.size == 0 or y.size == 0:
+            raise ValueError("Training data cannot be empty.")
+        if X.ndim != 2:
+            raise ValueError(f"X must be a 2-D array, got shape {X.shape}.")
+        if X.shape[0] != y.shape[0]:
+            raise ValueError(
+                f"X and y must have the same number of samples, "
+                f"got {X.shape[0]} and {y.shape[0]}."
+            )
 
         self.classes_ = np.unique(y)
+        if self.classes_.shape[0] != 2:
+            raise ValueError(
+                f"SVC supports binary classification only, but found "
+                f"{self.classes_.shape[0]} class(es) in y."
+            )
+
+        n = X.shape[0]
         # Map labels to {-1, +1}
         y_ = np.where(y == self.classes_[1], 1.0, -1.0)
 
