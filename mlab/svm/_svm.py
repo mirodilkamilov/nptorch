@@ -4,14 +4,20 @@ from ._svm_utils import compute_kernel
 
 
 class SVM:
-    def __init__(self, kernel="rbf", C=1.0, epsilon=0.1, degree=3):
+    def __init__(self, kernel="rbf", C=1.0, gamma="scale", coef0=0.0,
+                 epsilon=0.1, degree=3):
         self.kernel = kernel
         self.C = C
+        self.gamma = gamma
+        self.coef0 = coef0
         self.epsilon = epsilon
         self.degree = degree
 
     def _compute_kernel(self, X, Z):
-        return compute_kernel(X, Z, kernel=self.kernel, degree=self.degree)
+        return compute_kernel(
+            X, Z, kernel=self.kernel, gamma=self.gamma_,
+            coef0=self.coef0, degree=self.degree,
+        )
 
     def decision_function(self, X):
         """
